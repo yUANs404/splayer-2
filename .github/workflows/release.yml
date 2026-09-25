@@ -4,7 +4,7 @@ on:
   push:
     tags:
       - v* # 只在 tag v* 时触发
-  workflow_dispatch:
+  workflow_dispatch: # 支持手动触发（仅构建验证，不发 Release）
 
 env:
   NODE_VERSION: 22.x
@@ -16,36 +16,11 @@ concurrency:
 
 jobs:
   # ===================================================================
-  #  并行构建所有平台和架构
+  # 仅构建 Windows x64（本仓库为本地版，只面向 Windows 发布）
   # ===================================================================
   build:
-    name: Build on ${{ matrix.name }}
-    runs-on: ${{ matrix.runner }}
-    strategy:
-      # 矩阵策略
-      # 即使一个矩阵任务失败，其他任务也会继续运行
-      fail-fast: false
-      matrix:
-        include:
-          - name: Windows x64
-            runner: windows-latest
-            target: windows-x64
-          - name: Windows arm64
-            runner: windows-11-arm
-            target: windows-arm64
-          - name: macOS x64
-            runner: macos-15-intel
-            target: macos-x64
-          - name: macOS arm64
-            runner: macos-latest
-            target: macos-arm64
-          - name: Linux x64
-            runner: ubuntu-latest
-            target: linux-x64
-          - name: Linux arm64
-            runner: ubuntu-24.04-arm
-            target: linux-arm64
-    # 开始步骤
+    name: Build on Windows x64
+    runs-on: windows-latest
     steps:
       # 检出 Git 仓库
       - name: Check out git repository
@@ -58,7 +33,7 @@ jobs:
         uses: actions/setup-node@v6
         with:
           node-version: ${{ env.NODE_VERSION }}
-      # 设置 Rust
+      # 设置 Rust（编译任务栏歌词 / SMTC / 本地扫描器原生模块）
       - name: Setup Rust toolchain
         uses: dtolnay/rust-toolchain@stable
         with:
@@ -67,8 +42,7 @@ jobs:
         uses: Swatinem/rust-cache@v2
 
       # 清理旧的构建产物
-      - name: Clean workspace on Windows
-        if: runner.os == 'Windows'
+      - name: Clean workspace
         run: |
           Write-Host "🧹 Cleaning workspace, node_modules, and Electron caches..."
           if (Test-Path dist) { Remove-Item -Recurse -Force dist }
@@ -85,112 +59,43 @@ jobs:
           if (Test-Path "$env:USERPROFILE\.pnpm-store") {
             Remove-Item "$env:USERPROFILE\.pnpm-store" -Recurse -Force -ErrorAction SilentlyContinue
           }
-      - name: Clean workspace on macOS & Linux
-        if: runner.os == 'macOS' || runner.os == 'Linux'
-        run: |
-          echo "🧹 Cleaning workspace, node_modules, and Electron caches..."
-          rm -rf dist out node_modules ~/.cache/electron-builder ~/.cache/electron
-
-      # 更新 Ubuntu 软件源并安装依赖
-      - name: Update and Install Ubuntu Dependencies
-        if: runner.os == 'Linux'
-        run: |
-          sudo apt-get update
-          sudo apt-get install --no-install-recommends -y rpm libarchive-tools libopenjp2-tools
-
-      # macOS 上安装 LLVM 以支持 Wasm 编译
-      - name: Install LLVM on macOS
-        if: runner.os == 'macOS'
-        run: brew install llvm
-      - name: Set Environment Variables on macOS
-        if: runner.os == 'macOS'
-        run: |
-          echo "CC=$(brew --prefix llvm)/bin/clang" >> $GITHUB_ENV
-          echo "AR=$(brew --prefix llvm)/bin/llvm-ar" >> $GITHUB_ENV
 
       # 复制环境变量文件
-      - name: Copy .env file on Windows
-        if: runner.os == 'Windows'
+      - name: Copy .env file
         run: |
           if (-not (Test-Path .env)) {
             Copy-Item .env.example .env
           } else {
             Write-Host ".env file already exists. Skipping the copy step."
           }
-      - name: Copy .env file on macOS & Linux
-        if: runner.os == 'macOS' || runner.os == 'Linux'
-        run: |
-          if [ ! -f .env ]; then
-            cp .env.example .env
-          else
-            echo ".env file already exists. Skipping the copy step."
-          fi
 
       # 安装项目依赖
       - name: Install dependencies
         run: pnpm install
 
-      # 构建 Electron App
+      # 构建 Electron App（仅本地构建产物，禁止 electron-builder 自动发布）
       - name: Build
         env:
           CSC_IDENTITY_AUTO_DISCOVERY: false
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        shell: bash
-        run: |
-          case "${{ matrix.target }}" in
-            windows-x64)
-              pnpm build:win -- --x64
-              ;;
-            windows-arm64)
-              pnpm build:win -- --arm64
-              ;;
-            macos-x64)
-              pnpm build:mac -- --x64
-              ;;
-            macos-arm64)
-              pnpm build:mac -- --arm64
-              ;;
-            linux-x64)
-              pnpm build:linux -- --x64
-              ;;
-            linux-arm64)
-              pnpm build:linux -- --arm64
-              ;;
-            *)
-              echo "Unsupported target: ${{ matrix.target }}"
-              exit 1
-              ;;
-          esac
+        run: pnpm build:win -- --x64 --publish never
 
-      # 修复 Linux arm64 自动更新清单命名
-      - name: Rename Linux arm64 update manifest
-        if: matrix.target == 'linux-arm64'
-        shell: bash
-        run: |
-          if [ -f dist/latest-linux.yml ]; then
-            mv dist/latest-linux.yml dist/latest-linux-arm64.yml
-            echo "Renamed latest-linux.yml -> latest-linux-arm64.yml"
-          else
-            echo "dist/latest-linux.yml not found, skipping"
-          fi
-
-      # 合并所有构建
+      # 上传构建产物
       - name: Upload Artifact
         uses: actions/upload-artifact@v7
         with:
-          name: SPlayer-${{ matrix.name }}
+          name: SPlayer-Windows-x64
           path: dist/*.*
 
   # ===================================================================
-  #  Create & Publish GitHub Release
+  # Create & Publish GitHub Release（仅在 tag 推送时执行）
   # ===================================================================
   release:
     name: Create GitHub Release
     needs: build
+    if: startsWith(github.ref, 'refs/tags/')
     runs-on: ubuntu-latest
     permissions:
       contents: write
-      pull-requests: write
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
@@ -217,29 +122,32 @@ jobs:
           echo "待发布资源："
           ls -1 release-assets
 
-      # 用官方 gh CLI 确定性创建并发布 Release（替代有重复草稿/竞态问题的第三方 action）
+      # 用 gh CLI 创建 Draft Release；已存在同名 Release（如手动发布）时跳过，避免覆盖
       - name: Create GitHub Release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         shell: bash
         run: |
           TAG="${GITHUB_REF#refs/tags/}"
-          # 固定维护说明
           cat > notes.md <<'EOF'
-          ## 本项目进入维护模式
-          > 项目已进入维护模式，后续仅进行必要的维护与重大问题修复，不再主动开发新功能
-          > 新功能及后续版本请移步 [SPlayer-Next](https://github.com/SPlayer-Dev/SPlayer-Next)
+          ## SPlayer 2 · 本地版
+
+          纯本地音乐播放器——已彻底移除全部在线音乐服务，断网全功能可用。
+
+          - 下载 `*-setup.exe`（安装版）或 `*-portable.exe`（便携版），功能一致
+          - 移除清单与说明见仓库 [LOCAL-EDITION.md](https://github.com/yUANs404/splayer-2/blob/main/LOCAL-EDITION.md)
+          - 本版本基于 SPlayer 3.1.1（AGPL-3.0），感谢原项目作者 imsyy 与所有贡献者
 
           EOF
-          # 重跑场景
+          # 重跑保护：已存在同名 Release 时跳过（手动发布的 Release 不会被覆盖）
           if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
-            gh release delete "$TAG" --repo "$GITHUB_REPOSITORY" --yes
+            echo "Release $TAG 已存在，跳过创建（如需重新生成请先删除该 Release）"
+            exit 0
           fi
           gh release create "$TAG" \
             --repo "$GITHUB_REPOSITORY" \
-            --title "$TAG" \
+            --title "SPlayer 2 · 本地版 $TAG" \
             --notes-file notes.md \
-            --generate-notes \
             --verify-tag \
             --draft \
             release-assets/*
