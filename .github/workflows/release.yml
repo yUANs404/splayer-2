@@ -74,10 +74,14 @@ jobs:
         run: pnpm install
 
       # 构建 Electron App（仅本地构建产物，禁止 electron-builder 自动发布）
+      # 注意：electron-builder 26 在 CI 环境会触发“隐式发布”，必须显式传 --publish never
+      # （pnpm run 的参数透传在 && 链式脚本中不可靠，因此这里直接调用 electron-builder）
       - name: Build
         env:
           CSC_IDENTITY_AUTO_DISCOVERY: false
-        run: pnpm build:win -- --x64 --publish never
+        run: |
+          pnpm build
+          npx electron-builder --win --config electron-builder.config.ts --x64 --publish never
 
       # 上传构建产物
       - name: Upload Artifact
