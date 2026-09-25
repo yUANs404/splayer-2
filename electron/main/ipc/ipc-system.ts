@@ -1,6 +1,7 @@
 import { app, ipcMain, powerSaveBlocker } from "electron";
+import { readdir } from "node:fs/promises";
+import { join } from "node:path";
 import { ipcLog } from "../logger";
-import { getFonts } from "font-list";
 import { useStore } from "../store";
 
 /**
@@ -41,8 +42,32 @@ const initSystemIpc = (): void => {
   // 获取系统全部字体
   ipcMain.handle("get-all-fonts", async () => {
     try {
-      const fonts = await getFonts({ disableQuoting: true });
-      return fonts;
+      const fontDirs =
+        process.platform === "win32"
+          ? [join(process.env.WINDIR || "C:/Windows", "Fonts")]
+          : process.platform === "darwin"
+            ? ["/System/Library/Fonts", "/Library/Fonts", join(process.env.HOME || "", "Library/Fonts")]
+            : ["/usr/share/fonts", "/usr/local/share/fonts", join(process.env.HOME || "", ".fonts")];
+      const names = new Set<string>();
+      const supported = /\.(ttf|ttc|otf|woff|woff2)$/i;
+      const walk = async (dir: string, depth = 0): Promise<void> => {
+        if (!dir || depth > 3) return;
+        let entries;
+        try {
+          entries = await readdir(dir, { withFileTypes: true });
+        } catch {
+          return;
+        }
+        for (const entry of entries) {
+          const fullPath = join(dir, entry.name);
+          if (entry.isDirectory()) await walk(fullPath, depth + 1);
+          else if (supported.test(entry.name)) {
+            names.add(entry.name.replace(/\.(ttf|ttc|otf|woff|woff2)$/i, ""));
+          }
+        }
+      };
+      for (const dir of fontDirs) await walk(dir);
+      return [...names].sort();
     } catch (error) {
       ipcLog.error(`❌ Failed to get all system fonts: ${error}`);
       return [];

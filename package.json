@@ -59,7 +59,6 @@
     "dayjs": "^1.11.21",
     "electron-store": "^11.0.2",
     "electron-updater": "^6.8.3",
-    "font-list": "^2.1.0",
     "fuse.js": "^7.4.1",
     "get-port": "^7.2.0",
     "github-markdown-css": "^5.9.0",
