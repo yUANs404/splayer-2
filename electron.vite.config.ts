@@ -34,6 +34,8 @@ export default defineConfig(({ mode }) => {
     main: {
       build: {
         publicDir: resolve(__dirname, "public"),
+        // 主进程依赖直接打入 bundle，避免便携版从 app.asar 外置解析失败
+        externalizeDeps: false,
         rollupOptions: {
           input: {
             index: resolve(__dirname, "electron/main/index.ts"),
@@ -49,6 +51,8 @@ export default defineConfig(({ mode }) => {
     // 预加载
     preload: {
       build: {
+        // 预加载依赖直接打入 bundle，确保复制/便携版可独立运行
+        externalizeDeps: false,
         rollupOptions: {
           input: {
             index: resolve(__dirname, "electron/preload/index.ts"),
