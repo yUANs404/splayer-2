@@ -1,7 +1,7 @@
 # SPlayer 2 本地版 — 会话交接记忆
 
 > 用途：新会话开始时先阅读本文件，再查看 `git log` 和工作区状态，即可恢复当前项目上下文。
-> 更新时间：2026-09-25
+> 更新时间：2026-09-25（最新快照；复制发行版依赖修复已补充）
 
 ## 1. 当前仓库与分支
 
@@ -92,6 +92,8 @@
 - 删除网络代理 IPC 和 electron-store 中的在线代理/AMLL/下载字段。
 - **新增本地扫描 JS 回退**：`electron/main/services/LocalMusicService.ts` 在 `tools.node` 不存在时使用 Node.js + `music-metadata` 扫描目录；支持音频扩展名、封面、mtime/size 增量、批量同步、已删除路径清理。
 - **删除 `font-list`**：`get-all-fonts` IPC 改为扫描系统字体目录，解决发行包中 `font-list` 的 `./libs/core` 缺失问题。
+- **复制发行版启动修复（最新）**：主进程和 preload 依赖直接内置打包；`.npmrc` 使用 `node-linker=hoisted`；删除 `font-list`，避免复制到其他目录后依赖开发目录或 `font-list/libs/core`。
+- 已验证：将 `dist/win-unpacked` 复制到桌面新目录后，主进程正常启动；原生 `.node` 缺失只产生预期降级日志，不会导致主进程异常。
 
 ### 构建 / 依赖 / CI
 
@@ -114,8 +116,9 @@
 
 ## 4. 最新关键提交
 
-按时间倒序：
+按时间倒序（新会话先以 `git log --oneline -12` 为准）：
 
+- `eeee73bb` 添加本交接文档（上一轮快照）
 - `14d28262` 修复复制发行版的主进程依赖与字体模块加载
 - `7c1d65f9` 主进程/preload 依赖内置打包
 - `b5234388` 修复 electron-builder 隐式发布，显式 `--publish never`
