@@ -226,7 +226,56 @@ E:ZcodeZcode项目6Splayer修改\testmusic
 E:/Zcode/Zcode项目6/Splayer修改/testmusic
 ```
 
-## 8. 新会话建议启动流程
+## 8. 当前任务进度快照
+
+### 已完成
+
+- [x] Fork 上游仓库并建立独立工作分支
+- [x] 完成在线功能影响面扫描
+- [x] 删除在线 UI、路由、页面、弹窗和菜单入口
+- [x] 删除网易云/解灰/QQ 音乐/Last.fm/流媒体 API
+- [x] 清理 Pinia store、在线设置、登录/收藏/云盘/下载/私人 FM/心动模式
+- [x] 播放内核限制为本地 `path -> file://`，历史在线歌曲自动跳过
+- [x] 保留本地播放、歌词、封面、歌单、窗口、托盘、任务栏歌词、系统媒体控制接口
+- [x] 删除主进程在线服务器、登录窗口、协议唤起、代理 IPC、在线缓存/下载服务
+- [x] 删除在线依赖和 Docker/网页在线部署链
+- [x] 新建 `splayer-2` 仓库并将当前版本设为 `main`
+- [x] 重写本地版 README 与 `LOCAL-EDITION.md`
+- [x] CI 改为只构建 Windows x64，禁用 Docker 发布和 electron-builder 自动发布
+- [x] 修复本地扫描器：缺少 Rust `tools.node` 时使用 JS 回退扫描
+- [x] 修复 FFmpeg 引擎隔离门槛，部分特殊 FLAC 已验证可播放
+- [x] 修复复制发行版缺少主进程/preload 依赖的问题
+- [x] 删除 `font-list`，改用系统字体目录扫描，修复 `./libs/core` 启动错误
+
+### 已验证
+
+- [x] `pnpm install`
+- [x] `pnpm lint`：0 错误、0 警告
+- [x] `pnpm typecheck`：node + web 均通过
+- [x] `SKIP_NATIVE_BUILD=true pnpm build`
+- [x] `electron-builder --win --config electron-builder.config.ts`
+- [x] 解包版复制到桌面新目录后可启动，依赖不再从开发目录解析
+- [x] JS 回退扫描能把本地文件写入 SQLite 曲库并显示在音乐库
+- [x] 本地 WAV 播放、暂停、恢复、进度、Control API 已验证
+- [x] 周杰伦特殊 FLAC：切换 FFmpeg 后“晴天 / 一路向北 / 七里香”均已播放成功
+- [x] CDP 网络监控：播放和本地页面期间无外部请求
+- [x] GitHub Actions Windows x64 手动构建成功（run `36131308605`）
+
+### 当前已完成的最新修复
+
+- `14d28262`：修复复制发行版的主进程依赖与字体模块加载
+- `eeee73bb`：添加上一轮会话交接文档
+- `89dad63e`：更新本交接文档至依赖修复状态
+
+### 仍需人工确认或后续工作
+
+- [ ] 在有 Rust 工具链的机器上重新构建并验证任务栏歌词、Windows SMTC、Rust 原生扫描器
+- [ ] 在真实朋友设备上测试安装版和便携版（尤其是杀毒软件/临时目录环境）
+- [ ] 如果需要正式 CI Release，可推送新的 `v3.1.1-local.2` 标签；当前 `v3.1.1-local.1` 已存在，不要覆盖已发布 Release
+- [ ] 可选：清理用户本地设置中已删除的测试目录（例如旧的 `testmusic` 路径）
+- [ ] 可选：进一步修复/验证 portable 在所有 Windows 用户环境下的首次自解压启动行为
+
+## 9. 新会话建议启动流程
 
 ```bash
 cd "E:/Zcode/Zcode项目6/Splayer修改/SPlayer"
