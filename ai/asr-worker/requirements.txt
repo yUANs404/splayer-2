@@ -1,0 +1,7 @@
+# SPlayer AI 语音助手 — Qwen3-ASR Worker 依赖（Python 3.12）
+# 安装顺序：先装 CUDA 版 torch，再装本文件
+#   pip install torch --index-url https://download.pytorch.org/whl/cu126
+#   pip install -r requirements.txt
+torch>=2.6
+qwen-asr>=0.0.6
+modelscope>=1.20

@@ -117,6 +117,12 @@
             :groups="networkConfig.groups"
             :highlight-key="highlightKey"
           />
+          <!-- AI 语音助手 -->
+          <UniversalSetting
+            v-else-if="activeKey === 'ai'"
+            :groups="aiConfig.groups"
+            :highlight-key="highlightKey"
+          />
           <!-- 关于 -->
           <AboutSetting v-else-if="activeKey === 'about'" />
           <!-- 空白 -->
@@ -144,6 +150,7 @@ import { useLyricSettings } from "./config/lyric";
 import { useKeyboardSettings } from "./config/keyboard";
 import { useLocalSettings } from "./config/local";
 import { useNetworkSettings } from "./config/network";
+import { useAiSettings } from "./config/ai";
 
 const props = defineProps<{ type: SettingType; scrollTo?: string }>();
 
@@ -154,6 +161,7 @@ const lyricConfig = useLyricSettings();
 const keyboardConfig = useKeyboardSettings();
 const localConfig = useLocalSettings();
 const networkConfig = useNetworkSettings();
+const aiConfig = useAiSettings();
 
 // 配置映射表
 const configs: Record<string, any> = {
@@ -176,6 +184,7 @@ const allSettingGroups = computed(() => {
     { key: "keyboard", groups: keyboardConfig.groups },
     { key: "local", groups: localConfig.groups },
     { key: "network", groups: networkConfig.groups },
+    { key: "ai", groups: aiConfig.groups },
   ];
 });
 
@@ -335,6 +344,12 @@ const menuOptions: MenuOption[] = [
     key: "network",
     label: "网络与连接",
     icon: renderIcon("Link"),
+  },
+  {
+    key: "ai",
+    label: "AI 语音助手",
+    show: isElectron,
+    icon: renderIcon("Chat"),
   },
   {
     key: "about",

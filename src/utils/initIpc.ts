@@ -1,8 +1,10 @@
 import { usePlayerController } from "@/core/player/PlayerController";
 import * as playerIpc from "@/core/player/PlayerIpc";
-import { useMusicStore, useSettingStore, useStatusStore } from "@/stores";
+import { startMicCapture, stopMicCapture } from "@/services/ai/mic-capture";
+import { initAiPlayerAdapter } from "@/services/ai/player-adapter";
+import { useAiStore, useMusicStore, useSettingStore, useStatusStore } from "@/stores";
 import type { SettingType } from "@/types/main";
-import { TASKBAR_IPC_CHANNELS, type TaskbarLyricSettings } from "@/types/shared";
+import { AI_IPC_CHANNELS, TASKBAR_IPC_CHANNELS, type TaskbarLyricSettings } from "@/types/shared";
 import { cloneDeep } from "lodash-es";
 import { toRaw } from "vue";
 import { sendTaskbarCoverColor } from "./color";
@@ -15,6 +17,9 @@ const closeUpdateStatus = () => {
   const statusStore = useStatusStore();
   statusStore.updateCheck = false;
 };
+
+// AI 录音静音前是否正在播放（用于结束后恢复）
+let aiDuckWasPlaying = false;
 
 // 全局 IPC 事件
 const initIpc = () => {
@@ -43,6 +48,30 @@ const initIpc = () => {
     // 播放模式切换
     window.electron.ipcRenderer.on("changeRepeat", (_, mode) => player.toggleRepeat(mode));
     window.electron.ipcRenderer.on("toggleShuffle", (_, mode) => player.toggleShuffle(mode));
+    // AI 语音采集控制（主进程在按下/松开快捷键时下发）
+    window.electron.ipcRenderer.on(AI_IPC_CHANNELS.MIC_START, () => {
+      startMicCapture().catch((error: unknown) => {
+        const message = error instanceof Error ? error.message : String(error);
+        console.error("AI 麦克风启动失败:", message);
+        window.$message?.error(`麦克风启动失败：${message}`);
+        stopMicCapture();
+      });
+    });
+    window.electron.ipcRenderer.on(AI_IPC_CHANNELS.MIC_STOP, () => stopMicCapture());
+    // 录音时静音播放、结束后恢复（避免外放音乐混入麦克风）
+    window.electron.ipcRenderer.on(AI_IPC_CHANNELS.DUCK_START, () => {
+      const statusStore = useStatusStore();
+      aiDuckWasPlaying = statusStore.playStatus;
+      if (aiDuckWasPlaying) void player.pause();
+    });
+    window.electron.ipcRenderer.on(AI_IPC_CHANNELS.DUCK_END, () => {
+      if (aiDuckWasPlaying) void player.play();
+      aiDuckWasPlaying = false;
+    });
+    // AI 播放器适配层（复杂指令执行 + 结果回执）
+    initAiPlayerAdapter();
+    // AI 状态镜像（面板与设置页数据源）
+    void useAiStore().init();
     // 开启设置
     window.electron.ipcRenderer.on("openSetting", (_, type: SettingType, scrollTo?: string) =>
       openSetting(type, scrollTo),

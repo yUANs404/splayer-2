@@ -318,6 +318,7 @@ export type SettingType =
   | "lyrics"
   | "keyboard"
   | "local"
+  | "ai"
   | "network"
   | "about";
 

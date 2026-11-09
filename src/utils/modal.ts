@@ -497,3 +497,27 @@ export const openExcludeLyric = async () => {
     },
   });
 };
+
+/** 打开 AI 语音助手面板 */
+export const openAiPanel = async () => {
+  if (isModalOpen("ai-panel")) return;
+  setModalOpen("ai-panel");
+  const { default: AiPanel } = await import("@/components/Modal/AI/AiPanel.vue");
+  window.$modal.create({
+    preset: "card",
+    transformOrigin: "center",
+    autoFocus: false,
+    style: { width: "420px" },
+    title: "AI 语音助手",
+    content: () => {
+      return h(AiPanel, {
+        onClose: () => {
+          setModalClosed("ai-panel");
+        },
+      });
+    },
+    onAfterLeave: () => {
+      setModalClosed("ai-panel");
+    },
+  });
+};

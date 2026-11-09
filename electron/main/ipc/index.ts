@@ -1,4 +1,5 @@
 import { isMac } from "../utils/config";
+import initAiIpc from "./ipc-ai";
 import initCacheIpc from "./ipc-cache";
 import initFileIpc from "./ipc-file";
 import initLyricIpc from "./ipc-lyric";
@@ -35,6 +36,7 @@ const initIpc = (): void => {
   initMediaIpc();
   initMpvIpc();
   initRendererLogIpc();
+  initAiIpc();
   if (isMac) {
     initMacStatusBarIpc();
   } else {

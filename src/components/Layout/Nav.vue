@@ -34,6 +34,12 @@
       <!-- 可拖拽 -->
       <div v-if="isDesktop" class="nav-drag" />
       <n-flex align="center">
+        <!-- AI 语音助手 -->
+        <n-button :focusable="false" title="AI 语音助手" tertiary circle @click="openAiPanel">
+          <template #icon>
+            <SvgIcon name="Chat" />
+          </template>
+        </n-button>
         <!-- 设置菜单 -->
         <n-dropdown :options="setOptions" trigger="click" @select="setSelect">
           <n-button :focusable="false" title="设置" tertiary circle>
@@ -142,7 +148,7 @@
 import type { DropdownOption } from "naive-ui";
 import { useSettingStore, useStatusStore } from "@/stores";
 import { renderIcon } from "@/utils/helper";
-import { openSetting, openThemeConfig, openScalingModal, openUpdateApp } from "@/utils/modal";
+import { openAiPanel, openSetting, openThemeConfig, openScalingModal, openUpdateApp } from "@/utils/modal";
 import { isDev, isElectron } from "@/utils/env";
 import { useMobile } from "@/composables/useMobile";
 

@@ -13,6 +13,7 @@ declare module 'vue' {
   export interface GlobalComponents {
     ABLoop: typeof import('./src/components/Modal/ABLoop.vue')['default']
     AboutSetting: typeof import('./src/components/Setting/AboutSetting.vue')['default']
+    AiPanel: typeof import('./src/components/Modal/AI/AiPanel.vue')['default']
     AMLyric: typeof import('./src/components/Player/PlayerLyric/AMLyric.vue')['default']
     ArtistList: typeof import('./src/components/List/ArtistList.vue')['default']
     AutoClose: typeof import('./src/components/Modal/AutoClose.vue')['default']
