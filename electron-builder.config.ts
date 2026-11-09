@@ -27,6 +27,11 @@ const config: Configuration = {
   // 将原生插件作为外部资源复制
   extraResources: [
     {
+      // AI 语音助手：ASR Worker 脚本需独立于 app.asar 供 Python 读取
+      from: "ai/asr-worker",
+      to: "ai/asr-worker",
+    },
+    {
       from: "native/external-media-integration",
       to: "native",
       filter: ["*.node"],

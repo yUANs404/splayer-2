@@ -44,6 +44,8 @@ export default defineConfig(({ mode }) => {
               "electron/main/workers/audio-analysis.worker.ts",
             ),
           },
+          // better-sqlite3 与 uiohook-napi 含原生模块，必须保留为运行时依赖
+          external: ["better-sqlite3", "uiohook-napi"],
         },
       },
       resolve: commonResolve,

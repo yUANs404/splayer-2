@@ -4,10 +4,10 @@
 <p>一个纯本地音乐播放器 —— 无登录、无联网、无推荐，只播放你硬盘里的歌</p>
 
 [![License](https://img.shields.io/badge/License-AGPL_3.0-blue.svg)](./LICENSE)
-[![Version](https://img.shields.io/badge/Version-3.1.1--local.1-orange.svg)](../../releases)
+[![Version](https://img.shields.io/badge/Version-3.2.0--ai-orange.svg)](../../releases)
 [![基于 SPlayer](https://img.shields.io/badge/基于-SPlayer_3.1.1-4c8bf5.svg)](https://github.com/SPlayer-Dev/SPlayer)
 
-[下载发行版](../../releases) · [移除清单](./LOCAL-EDITION.md) · [上游项目](https://github.com/SPlayer-Dev/SPlayer)
+[下载发行版](../../releases) · [移除清单](./LOCAL-EDITION.md) · [AI 部署指南](./ai/asr-worker/README.md) · [上游项目](https://github.com/SPlayer-Dev/SPlayer)
 
 </div>
 
@@ -33,8 +33,45 @@
 - **本地歌单**：新建 / 编辑 / 拖拽排序 / 批量操作
 - **遥控**：局域网 WebSocket 遥控 + 本地 HTTP 控制接口（`/api/control`）
 - **个性化**：主题色 / 明暗模式 / 背景图 / 自定义字体 / 自定义 CSS / JS
+- **AI 语音助手（3.2.0 新增）**：按住 F8 说话即可点歌 / 控制，全程本地推理，详见下文
 
 <sub>* 任务栏歌词与系统媒体控制（SMTC / MPRIS）需要编译 Rust 原生模块，见下文构建说明。</sub>
+
+## AI 语音助手（v3.2.0）
+
+按住 **F8** 说话，松开即执行：「播放EXO的咆哮」自动映射到韩文歌 `으르렁`，「暂停」「下一首」「调高音量」「周董的歌」等口语指令全部支持。**语音识别与推理全部在本机完成，不上传任何录音，也不依赖任何云端 AI。**
+
+### 工作原理（低延迟架构）
+
+```text
+按住 F8 → 录音（同时自动暂停音乐，松开自动续播）
+松开 F8 → 静音裁剪 + 增益归一化 → Qwen3-ASR-0.6B（GPU 常驻 Worker，热态 ~0.45s）
+       → 零 LLM 快速通道：控制指令规则命中（~0ms）｜曲库高置信直通（~3ms）
+       → 仅歧义时才调用 Ollama qwen2.5:7b 单次终裁（热态 ~1.5s）
+       → 调用播放器原有接口播放
+```
+
+实测（RTX 4060 Laptop 8GB）：普通指令松开到播放 **P50 0.46s / P95 0.61s**，歧义指令 ~1.5-2.5s；识别准确率对比同语料 whisper.cpp 提速 7.6 倍。
+
+### 使用的 AI 模型（全部本地开源权重）
+
+| 模型 | 用途 | 体积 | 是否必需 |
+|---|---|---|---|
+| [Qwen3-ASR-0.6B](https://huggingface.co/Qwen/Qwen3-ASR-0.6B) | 语音识别（30 语种自动检测，支持歌声/带 BGM） | ~1.8GB | 推荐 |
+| `qwen2.5:7b`（Ollama） | 仅歧义指令消歧（歌名谐音改判等） | ~4.7GB | 推荐 |
+| `qwen2.5:3b-instruct`（Ollama） | 消歧的低延迟替代（可选切换） | ~1.9GB | 可选 |
+| whisper-cli large-v3-turbo（whisper.cpp CUDA） | 备用识别引擎，Qwen3 不可用时自动回退 | ~1.6GB | 可选 |
+
+隐私说明：录音只在内存中处理，识别完成后即丢弃，从不写盘、从不上传；指令历史默认仅存文本且可一键清空。
+
+### 在你的电脑上复用
+
+硬件要求：NVIDIA GPU（4GB+ 显存即可，8GB 体验最佳）、Windows 10/11。完整步骤见 **[ai/asr-worker/README.md](./ai/asr-worker/README.md)**，概要：
+
+1. 一键脚本：`powershell -ExecutionPolicy Bypass -File ai\asr-worker\setup-windows.ps1`（自动创建 Python 虚拟环境、安装 CUDA 版 torch 与 qwen-asr、下载 Qwen3-ASR-0.6B 权重）
+2. `ollama pull qwen2.5:7b`
+3. 应用内配置：`设置 → AI 语音助手 → 识别引擎选 Qwen3-ASR`，填入 Python 路径与模型目录
+4. 不配置 AI 也完全不影响播放器本体——AI 是可选增强，任何组件故障都自动回退或静默降级
 
 ## 下载
 
